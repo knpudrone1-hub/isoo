@@ -5,7 +5,9 @@
         apiKey: "isooKittyApiKey",
         model: "isooKittyModel",
         endpoint: "isooKittyEndpoint",
-        speech: "isooKittySpeech"
+        speech: "isooKittySpeech",
+        voice: "isooKittyVoice",
+        voiceStyle: "isooKittyVoiceStyle"
     };
 
     const DEFAULT_ENDPOINT = "https://api.openai.com/v1/responses";
@@ -26,6 +28,9 @@
         model: "gpt-5.4-mini",
         endpoint: DEFAULT_ENDPOINT,
         speechEnabled: true,
+        voiceId: "",
+        voiceStyle: "cute",
+        voices: [],
         attachments: [],
         turns: [],
         busy: false,
@@ -37,6 +42,7 @@
         cacheElements();
         loadSettings();
         bindEvents();
+        setupSpeechSynthesis();
         setupSpeechRecognition();
         renderApiStatus();
         renderEmptyState();
@@ -61,6 +67,9 @@
         els.clearKeyBtn = document.getElementById("clear-key-btn");
         els.modelSelect = document.getElementById("model-select");
         els.endpointInput = document.getElementById("endpoint-input");
+        els.voiceSelect = document.getElementById("voice-select");
+        els.voiceStyleSelect = document.getElementById("voice-style-select");
+        els.testVoiceBtn = document.getElementById("test-voice-btn");
         els.quickButtons = document.querySelectorAll("[data-prompt]");
     }
 
@@ -69,10 +78,13 @@
         state.model = localStorage.getItem(STORAGE_KEYS.model) || state.model;
         state.endpoint = localStorage.getItem(STORAGE_KEYS.endpoint) || DEFAULT_ENDPOINT;
         state.speechEnabled = localStorage.getItem(STORAGE_KEYS.speech) !== "off";
+        state.voiceId = localStorage.getItem(STORAGE_KEYS.voice) || "";
+        state.voiceStyle = localStorage.getItem(STORAGE_KEYS.voiceStyle) || "cute";
 
         els.apiKeyInput.value = state.apiKey ? "저장됨" : "";
         els.modelSelect.value = state.model;
         els.endpointInput.value = state.endpoint;
+        els.voiceStyleSelect.value = state.voiceStyle;
         els.speechToggle.textContent = state.speechEnabled ? "소리 켜짐" : "소리 꺼짐";
     }
 
@@ -89,6 +101,9 @@
         els.apiKeyInput.addEventListener("focus", handleApiKeyFocus);
         els.modelSelect.addEventListener("change", saveModel);
         els.endpointInput.addEventListener("change", saveEndpoint);
+        els.voiceSelect.addEventListener("change", saveVoice);
+        els.voiceStyleSelect.addEventListener("change", saveVoiceStyle);
+        els.testVoiceBtn.addEventListener("click", testVoice);
 
         els.quickButtons.forEach((button) => {
             button.addEventListener("click", () => {
@@ -416,6 +431,18 @@
         localStorage.setItem(STORAGE_KEYS.endpoint, value);
     }
 
+    function saveVoice() {
+        state.voiceId = els.voiceSelect.value;
+        localStorage.setItem(STORAGE_KEYS.voice, state.voiceId);
+        testVoice();
+    }
+
+    function saveVoiceStyle() {
+        state.voiceStyle = els.voiceStyleSelect.value;
+        localStorage.setItem(STORAGE_KEYS.voiceStyle, state.voiceStyle);
+        testVoice();
+    }
+
     function renderApiStatus() {
         els.apiStatus.textContent = state.apiKey ? "API 준비됨" : "API 키 필요";
         els.apiStatus.classList.toggle("ready", Boolean(state.apiKey));
@@ -530,16 +557,111 @@
         localStorage.setItem(STORAGE_KEYS.speech, state.speechEnabled ? "on" : "off");
         els.speechToggle.textContent = state.speechEnabled ? "소리 켜짐" : "소리 꺼짐";
         if (!state.speechEnabled && window.speechSynthesis) window.speechSynthesis.cancel();
+        if (state.speechEnabled) testVoice();
     }
 
     function speak(text) {
-        if (!state.speechEnabled || !("speechSynthesis" in window)) return;
+        if (!state.speechEnabled || !("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") return;
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
+        const voice = getSelectedVoice();
+        if (voice) utterance.voice = voice;
         utterance.lang = "ko-KR";
-        utterance.rate = 0.96;
-        utterance.pitch = 1.08;
+        applyVoiceStyle(utterance);
+        utterance.onstart = () => setVoiceStatus("키티가 읽어주는 중이에요.");
+        utterance.onerror = () => setVoiceStatus("목소리를 재생하지 못했어요. 테스트 버튼을 한 번 눌러 다시 확인해 주세요.", "error");
         window.speechSynthesis.speak(utterance);
+        if (typeof window.speechSynthesis.resume === "function") {
+            window.setTimeout(() => window.speechSynthesis.resume(), 120);
+        }
+    }
+
+    function setupSpeechSynthesis() {
+        if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") {
+            els.speechToggle.disabled = true;
+            els.voiceSelect.disabled = true;
+            els.voiceStyleSelect.disabled = true;
+            els.testVoiceBtn.disabled = true;
+            els.speechToggle.textContent = "소리 불가";
+            return;
+        }
+
+        const loadVoices = () => {
+            state.voices = window.speechSynthesis.getVoices();
+            renderVoiceOptions();
+        };
+
+        loadVoices();
+        if (typeof window.speechSynthesis.addEventListener === "function") {
+            window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
+        } else {
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+        }
+    }
+
+    function renderVoiceOptions() {
+        const voices = [...state.voices].sort((a, b) => {
+            const aKo = a.lang && a.lang.toLowerCase().startsWith("ko") ? 0 : 1;
+            const bKo = b.lang && b.lang.toLowerCase().startsWith("ko") ? 0 : 1;
+            return aKo - bKo || a.name.localeCompare(b.name);
+        });
+
+        els.voiceSelect.innerHTML = "";
+
+        const auto = document.createElement("option");
+        auto.value = "";
+        auto.textContent = "자동 선택";
+        els.voiceSelect.appendChild(auto);
+
+        if (!voices.length) {
+            auto.textContent = "자동 선택 - 목소리 불러오는 중";
+            return;
+        }
+
+        voices.forEach((voice) => {
+            const option = document.createElement("option");
+            option.value = voiceId(voice);
+            option.textContent = `${voice.name} (${voice.lang})`;
+            els.voiceSelect.appendChild(option);
+        });
+
+        els.voiceSelect.value = voices.some((voice) => voiceId(voice) === state.voiceId) ? state.voiceId : "";
+    }
+
+    function getSelectedVoice() {
+        if (!state.voices.length) state.voices = window.speechSynthesis.getVoices();
+        if (state.voiceId) {
+            const selected = state.voices.find((voice) => voiceId(voice) === state.voiceId);
+            if (selected) return selected;
+        }
+        return state.voices.find((voice) => voice.lang && voice.lang.toLowerCase().startsWith("ko"))
+            || state.voices.find((voice) => voice.default)
+            || state.voices[0]
+            || null;
+    }
+
+    function voiceId(voice) {
+        return `${voice.name}::${voice.lang}`;
+    }
+
+    function applyVoiceStyle(utterance) {
+        const styles = {
+            cute: { pitch: 1.35, rate: 1.02 },
+            soft: { pitch: 1.08, rate: 0.94 },
+            slow: { pitch: 1.0, rate: 0.82 }
+        };
+        const style = styles[state.voiceStyle] || styles.cute;
+        utterance.pitch = style.pitch;
+        utterance.rate = style.rate;
+    }
+
+    function testVoice() {
+        if (!state.speechEnabled) {
+            state.speechEnabled = true;
+            localStorage.setItem(STORAGE_KEYS.speech, "on");
+            els.speechToggle.textContent = "소리 켜짐";
+        }
+        speak("안녕 이수야. 키티 목소리 테스트야.");
     }
 
     function autosizeInput() {

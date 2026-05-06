@@ -1,4 +1,4 @@
-const CACHE_NAME = "isoo-math-kitty-v2";
+const CACHE_NAME = "isoo-math-kitty-v5";
 const ASSETS = [
   "./index_isoo.html",
   "./style_isoo.css",

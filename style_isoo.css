@@ -50,15 +50,15 @@ select {
     width: min(1180px, 100%);
     min-height: 100vh;
     margin: 0 auto;
-    padding: 18px;
+    padding: 12px;
     display: grid;
     grid-template-rows: auto 1fr;
-    gap: 14px;
+    gap: 10px;
 }
 
 .topbar {
-    min-height: 94px;
-    padding: 12px 14px;
+    min-height: 76px;
+    padding: 8px 12px;
     border: 1px solid rgba(255, 255, 255, 0.9);
     border-radius: var(--radius);
     background: rgba(255, 255, 255, 0.82);
@@ -77,8 +77,8 @@ select {
 }
 
 .brand-kitty {
-    width: 78px;
-    height: 70px;
+    width: 64px;
+    height: 58px;
     object-fit: contain;
     flex: 0 0 auto;
 }
@@ -99,7 +99,7 @@ p {
 h1 {
     margin-bottom: 0;
     color: var(--pink-dark);
-    font-size: clamp(1.55rem, 3vw, 2.3rem);
+    font-size: clamp(1.38rem, 2.6vw, 2rem);
     line-height: 1.1;
     letter-spacing: 0;
 }
@@ -113,8 +113,8 @@ h1 {
 }
 
 .status-chip {
-    min-height: 38px;
-    padding: 9px 12px;
+    min-height: 34px;
+    padding: 7px 11px;
     border-radius: 999px;
     background: #fff2c7;
     color: #835d00;
@@ -131,8 +131,9 @@ h1 {
 .tool-button,
 .send-button,
 .key-row button,
+.voice-row button,
 .quick-buttons button {
-    min-height: 42px;
+    min-height: 38px;
     border: 0;
     border-radius: var(--radius);
     font-weight: 800;
@@ -147,8 +148,8 @@ h1 {
 .workspace {
     min-height: 0;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 320px;
-    gap: 14px;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 10px;
 }
 
 .chat-area,
@@ -168,7 +169,7 @@ h1 {
 
 .messages {
     min-height: 0;
-    padding: 18px;
+    padding: 14px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -183,7 +184,7 @@ h1 {
 }
 
 .empty-state img {
-    width: min(180px, 52vw);
+    width: min(150px, 48vw);
     height: auto;
     display: block;
     margin: 0 auto 16px;
@@ -278,7 +279,7 @@ h1 {
 
 .composer {
     border-top: 1px solid #f2e0e5;
-    padding: 12px;
+    padding: 10px;
     background: rgba(255, 250, 243, 0.9);
 }
 
@@ -320,7 +321,7 @@ h1 {
 
 #user-input {
     width: 100%;
-    min-height: 54px;
+    min-height: 46px;
     max-height: 150px;
     resize: none;
     padding: 14px;
@@ -381,7 +382,7 @@ h1 {
 
 .voice-status {
     min-height: 20px;
-    margin: 8px 2px 0;
+    margin: 6px 2px 0;
     color: var(--muted);
     font-size: 0.82rem;
     line-height: 1.45;
@@ -398,11 +399,11 @@ h1 {
 .side-area {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
 }
 
 .side-kitty {
-    width: min(210px, 70%);
+    width: min(150px, 58%);
     height: auto;
     align-self: center;
     filter: drop-shadow(0 12px 18px rgba(95, 68, 88, 0.15));
@@ -411,7 +412,7 @@ h1 {
 .setup-panel,
 .quick-panel,
 .promise-panel {
-    padding: 14px;
+    padding: 10px;
     border: 1px solid rgba(255, 255, 255, 0.9);
     border-radius: var(--radius);
     background: rgba(255, 255, 255, 0.84);
@@ -421,14 +422,14 @@ h1 {
 .setup-panel h2,
 .quick-panel h2,
 .promise-panel h2 {
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     color: var(--pink-dark);
     font-size: 1.05rem;
 }
 
 .setup-panel label {
     display: block;
-    margin: 10px 0 6px;
+    margin: 8px 0 5px;
     color: var(--muted);
     font-size: 0.9rem;
     font-weight: 800;
@@ -437,7 +438,7 @@ h1 {
 .setup-panel input,
 .setup-panel select {
     width: 100%;
-    min-height: 40px;
+    min-height: 36px;
     padding: 8px 10px;
     border: 1px solid #e6ccd4;
     border-radius: var(--radius);
@@ -451,6 +452,20 @@ h1 {
     gap: 8px;
 }
 
+.voice-row {
+    display: grid;
+    grid-template-columns: 1fr 72px;
+    gap: 8px;
+}
+
+.voice-row button {
+    border: 0;
+    border-radius: var(--radius);
+    color: #fff;
+    background: var(--pink);
+    font-weight: 800;
+}
+
 .key-row button {
     color: #fff;
     background: var(--mint);
@@ -461,7 +476,7 @@ h1 {
 }
 
 .note {
-    margin: 12px 0 0;
+    margin: 8px 0 0;
     color: var(--muted);
     font-size: 0.82rem;
     line-height: 1.5;
@@ -490,7 +505,7 @@ h1 {
 @media (max-width: 920px) {
     .app-shell {
         min-height: auto;
-        padding: 12px;
+        padding: 8px;
     }
 
     .topbar {
@@ -507,7 +522,7 @@ h1 {
     }
 
     .chat-area {
-        min-height: 68vh;
+        min-height: 60vh;
     }
 
     .side-area {
@@ -532,8 +547,8 @@ h1 {
     }
 
     .brand-kitty {
-        width: 58px;
-        height: 54px;
+        width: 52px;
+        height: 48px;
     }
 
     .messages {
