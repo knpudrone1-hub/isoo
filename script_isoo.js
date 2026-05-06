@@ -12,6 +12,7 @@
 
     const DEFAULT_ENDPOINT = "https://api.openai.com/v1/responses";
     const WAKE_RESPONSE = "응 이수야 모르는 거 있어?";
+    const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
     const SYSTEM_PROMPT = [
         "너는 '이수의 수학친구 키티'야. 초등학생 이수가 수학을 스스로 풀도록 돕는 한국어 튜터로 말해.",
@@ -78,12 +79,12 @@
     }
 
     function loadSettings() {
-        state.apiKey = localStorage.getItem(STORAGE_KEYS.apiKey) || "";
-        state.model = localStorage.getItem(STORAGE_KEYS.model) || state.model;
-        state.endpoint = localStorage.getItem(STORAGE_KEYS.endpoint) || DEFAULT_ENDPOINT;
-        state.speechEnabled = localStorage.getItem(STORAGE_KEYS.speech) !== "off";
-        state.voiceId = localStorage.getItem(STORAGE_KEYS.voice) || "";
-        state.voiceStyle = localStorage.getItem(STORAGE_KEYS.voiceStyle) || "cute";
+        state.apiKey = getSavedValue(STORAGE_KEYS.apiKey) || "";
+        state.model = getSavedValue(STORAGE_KEYS.model) || state.model;
+        state.endpoint = getSavedValue(STORAGE_KEYS.endpoint) || DEFAULT_ENDPOINT;
+        state.speechEnabled = getSavedValue(STORAGE_KEYS.speech) !== "off";
+        state.voiceId = getSavedValue(STORAGE_KEYS.voice) || "";
+        state.voiceStyle = getSavedValue(STORAGE_KEYS.voiceStyle) || "cute";
 
         els.apiKeyInput.value = state.apiKey ? "저장됨" : "";
         els.modelSelect.value = state.model;
@@ -468,14 +469,14 @@
         const value = els.apiKeyInput.value.trim();
         if (!value || value === "저장됨") return;
         state.apiKey = value;
-        localStorage.setItem(STORAGE_KEYS.apiKey, value);
+        saveValue(STORAGE_KEYS.apiKey, value);
         els.apiKeyInput.value = "저장됨";
         renderApiStatus();
     }
 
     function clearApiKey() {
         state.apiKey = "";
-        localStorage.removeItem(STORAGE_KEYS.apiKey);
+        removeValue(STORAGE_KEYS.apiKey);
         els.apiKeyInput.value = "";
         renderApiStatus();
     }
@@ -495,25 +496,25 @@
 
     function saveModel() {
         state.model = els.modelSelect.value;
-        localStorage.setItem(STORAGE_KEYS.model, state.model);
+        saveValue(STORAGE_KEYS.model, state.model);
     }
 
     function saveEndpoint() {
         const value = els.endpointInput.value.trim() || DEFAULT_ENDPOINT;
         state.endpoint = value;
         els.endpointInput.value = value;
-        localStorage.setItem(STORAGE_KEYS.endpoint, value);
+        saveValue(STORAGE_KEYS.endpoint, value);
     }
 
     function saveVoice() {
         state.voiceId = els.voiceSelect.value;
-        localStorage.setItem(STORAGE_KEYS.voice, state.voiceId);
+        saveValue(STORAGE_KEYS.voice, state.voiceId);
         testVoice();
     }
 
     function saveVoiceStyle() {
         state.voiceStyle = els.voiceStyleSelect.value;
-        localStorage.setItem(STORAGE_KEYS.voiceStyle, state.voiceStyle);
+        saveValue(STORAGE_KEYS.voiceStyle, state.voiceStyle);
         testVoice();
     }
 
@@ -600,17 +601,44 @@
         state.recognition = recognition;
     }
 
-    function toggleRecognition() {
+    async function toggleRecognition() {
         if (!state.recognition) return;
         if (state.recognizing) {
             state.recognition.stop();
         } else {
             try {
+                await ensureMicrophonePermission();
                 state.recognition.start();
             } catch (error) {
-                setVoiceStatus("음성 인식을 시작하지 못했어요. 페이지를 새로고침한 뒤 다시 눌러 주세요.", "error");
+                setVoiceStatus(microphoneErrorMessage(error), "error");
             }
         }
+    }
+
+    async function ensureMicrophonePermission() {
+        if (!window.isSecureContext) {
+            throw new Error("not-secure");
+        }
+        if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
+            return;
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((track) => track.stop());
+    }
+
+    function microphoneErrorMessage(error) {
+        const name = error && (error.name || error.message);
+        if (name === "not-secure") {
+            return "마이크는 https 주소에서만 사용할 수 있어요. GitHub Pages 주소로 다시 열어 주세요.";
+        }
+        if (/NotAllowed|Permission|denied/i.test(name)) {
+            return "마이크 권한이 차단되었어요. 설치된 앱 아이콘을 길게 누른 뒤 앱 정보에서 마이크 권한을 허용해 주세요.";
+        }
+        if (/NotFound|DevicesNotFound/i.test(name)) {
+            return "마이크를 찾지 못했어요. 갤럭시 탭의 마이크 권한과 입력 장치를 확인해 주세요.";
+        }
+        return "말하기를 시작하지 못했어요. 앱 정보에서 마이크 권한을 허용한 뒤 다시 눌러 주세요.";
     }
 
     function setVoiceStatus(message, tone) {
@@ -635,7 +663,7 @@
 
     function toggleSpeech() {
         state.speechEnabled = !state.speechEnabled;
-        localStorage.setItem(STORAGE_KEYS.speech, state.speechEnabled ? "on" : "off");
+        saveValue(STORAGE_KEYS.speech, state.speechEnabled ? "on" : "off");
         els.speechToggle.textContent = state.speechEnabled ? "소리 켜짐" : "소리 꺼짐";
         if (!state.speechEnabled && window.speechSynthesis) window.speechSynthesis.cancel();
         if (state.speechEnabled) testVoice();
@@ -770,7 +798,7 @@
     function testVoice() {
         if (!state.speechEnabled) {
             state.speechEnabled = true;
-            localStorage.setItem(STORAGE_KEYS.speech, "on");
+            saveValue(STORAGE_KEYS.speech, "on");
             els.speechToggle.textContent = "소리 켜짐";
         }
         if (!state.voices.length) {
@@ -791,6 +819,50 @@
                 console.warn("Service worker registration failed.", error);
             });
         });
+    }
+
+    function getSavedValue(key) {
+        try {
+            const value = localStorage.getItem(key);
+            if (value !== null) return value;
+        } catch (error) {
+            console.warn("localStorage read failed.", error);
+        }
+        return readCookie(key);
+    }
+
+    function saveValue(key, value) {
+        try {
+            localStorage.setItem(key, value);
+        } catch (error) {
+            console.warn("localStorage write failed.", error);
+        }
+        writeCookie(key, value);
+    }
+
+    function removeValue(key) {
+        try {
+            localStorage.removeItem(key);
+        } catch (error) {
+            console.warn("localStorage remove failed.", error);
+        }
+        document.cookie = `${encodeURIComponent(key)}=; path=${cookiePath()}; max-age=0; SameSite=Lax`;
+    }
+
+    function readCookie(key) {
+        const encodedKey = `${encodeURIComponent(key)}=`;
+        const cookie = document.cookie.split("; ").find((item) => item.startsWith(encodedKey));
+        return cookie ? decodeURIComponent(cookie.slice(encodedKey.length)) : "";
+    }
+
+    function writeCookie(key, value) {
+        document.cookie = `${encodeURIComponent(key)}=${encodeURIComponent(value)}; path=${cookiePath()}; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;
+    }
+
+    function cookiePath() {
+        const path = window.location.pathname;
+        const directory = path.endsWith("/") ? path : path.slice(0, path.lastIndexOf("/") + 1);
+        return directory || "/";
     }
 
     if (document.readyState === "loading") {

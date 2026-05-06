@@ -2,7 +2,7 @@
   "name": "이수의 수학친구 키티",
   "short_name": "수학친구 키티",
   "description": "이수가 수학 문제를 힌트로 풀어가도록 돕는 GPT 챗봇",
-  "start_url": "index_isoo.html",
+  "start_url": "index_isoo.html?v=12",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
