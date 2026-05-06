@@ -266,9 +266,10 @@
     }
 
     function addAssistantTurn(text) {
-        addMessage("assistant", text);
-        rememberTurn("assistant", text);
-        speak(text);
+        const cleanText = collapseRepeatedAnswer(text);
+        addMessage("assistant", cleanText);
+        rememberTurn("assistant", cleanText);
+        speak(cleanText);
     }
 
     async function askOpenAI(text, attachments) {
@@ -325,16 +326,70 @@
     }
 
     function extractText(data) {
-        if (typeof data.output_text === "string") return data.output_text;
+        if (typeof data.output_text === "string") return collapseRepeatedAnswer(data.output_text);
         const parts = [];
+        const seen = new Set();
 
         (data.output || []).forEach((item) => {
             (item.content || []).forEach((content) => {
-                if (typeof content.text === "string") parts.push(content.text);
+                if (typeof content.text !== "string") return;
+                const key = normalizeAnswer(content.text);
+                if (!key || seen.has(key)) return;
+                seen.add(key);
+                parts.push(content.text);
             });
         });
 
-        return parts.join("\n");
+        return collapseRepeatedAnswer(parts.join("\n"));
+    }
+
+    function collapseRepeatedAnswer(text) {
+        let value = String(text || "").replace(/\r\n/g, "\n").trim();
+        if (!value) return value;
+
+        value = collapseRepeatedByLines(value);
+        value = collapseRepeatedByParagraphs(value);
+        value = collapseRepeatedByNormalizedHalf(value);
+        return value.trim();
+    }
+
+    function collapseRepeatedByLines(text) {
+        const lines = text.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+        if (lines.length < 2 || lines.length % 2 !== 0) return text;
+
+        const middle = lines.length / 2;
+        const first = lines.slice(0, middle).join("\n");
+        const second = lines.slice(middle).join("\n");
+        return normalizeAnswer(first) === normalizeAnswer(second) ? first : text;
+    }
+
+    function collapseRepeatedByParagraphs(text) {
+        const paragraphs = text.split(/\n{2,}/).map((part) => part.trim()).filter(Boolean);
+        if (paragraphs.length < 2 || paragraphs.length % 2 !== 0) return text;
+
+        const middle = paragraphs.length / 2;
+        const first = paragraphs.slice(0, middle).join("\n\n");
+        const second = paragraphs.slice(middle).join("\n\n");
+        return normalizeAnswer(first) === normalizeAnswer(second) ? first : text;
+    }
+
+    function collapseRepeatedByNormalizedHalf(text) {
+        const normalized = normalizeAnswer(text);
+        if (normalized.length < 30 || normalized.length % 2 !== 0) return text;
+
+        const middle = normalized.length / 2;
+        if (normalized.slice(0, middle) === normalized.slice(middle)) {
+            return text.slice(0, Math.ceil(text.length / 2)).trim();
+        }
+        return text;
+    }
+
+    function normalizeAnswer(text) {
+        return String(text || "")
+            .replace(/\s+/g, " ")
+            .replace(/[“”]/g, '"')
+            .replace(/[‘’]/g, "'")
+            .trim();
     }
 
     function rememberTurn(role, text) {

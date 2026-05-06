@@ -1,4 +1,4 @@
-const CACHE_NAME = "isoo-math-kitty-v8";
+const CACHE_NAME = "isoo-math-kitty-v10";
 const ASSETS = [
   "./index_isoo.html",
   "./style_isoo.css",
@@ -32,15 +32,14 @@ self.addEventListener("fetch", (event) => {
   if (new URL(request.url).origin !== self.location.origin) return;
 
   event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request).then((response) => {
+    fetch(request)
+      .then((response) => {
         if (response && response.status === 200) {
           const copy = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
         }
         return response;
-      });
-    })
+      })
+      .catch(() => caches.match(request))
   );
 });
