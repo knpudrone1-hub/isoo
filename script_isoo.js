@@ -35,7 +35,10 @@
         turns: [],
         busy: false,
         recognition: null,
-        recognizing: false
+        recognizing: false,
+        voiceAutoSubmitted: false,
+        lastSubmitSignature: "",
+        lastSubmitAt: 0
     };
 
     function init() {
@@ -209,6 +212,7 @@
         const text = els.input.value.trim();
         const attachments = [...state.attachments];
         if (!text && !attachments.length) return;
+        if (isDuplicateSubmit(text, attachments)) return;
 
         clearEmptyState();
         addMessage("user", text || "사진 문제를 봐줘", { images: attachments });
@@ -245,6 +249,20 @@
 
     function isWakeCall(text) {
         return text.replace(/[.!?~。！？\s]/g, "") === "키티야";
+    }
+
+    function isDuplicateSubmit(text, attachments) {
+        const signature = JSON.stringify({
+            text,
+            images: attachments.map((attachment) => attachment.id)
+        });
+        const now = Date.now();
+        if (signature === state.lastSubmitSignature && now - state.lastSubmitAt < 2500) {
+            return true;
+        }
+        state.lastSubmitSignature = signature;
+        state.lastSubmitAt = now;
+        return false;
     }
 
     function addAssistantTurn(text) {
@@ -478,6 +496,7 @@
 
         recognition.addEventListener("start", () => {
             state.recognizing = true;
+            state.voiceAutoSubmitted = false;
             els.voiceBtn.textContent = "듣는 중";
             els.voiceBtn.classList.add("recording");
             setVoiceStatus("듣고 있어요. 예: 키티야", "warning");
@@ -496,7 +515,13 @@
             if (els.input.value) {
                 setVoiceStatus(`인식됨: ${els.input.value}`);
             }
-            if (finalText.trim()) {
+            if (finalText.trim() && !state.voiceAutoSubmitted) {
+                state.voiceAutoSubmitted = true;
+                try {
+                    recognition.stop();
+                } catch (error) {
+                    console.warn("Speech recognition stop failed.", error);
+                }
                 window.setTimeout(() => els.form.requestSubmit(), 250);
             }
         });
