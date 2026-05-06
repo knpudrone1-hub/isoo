@@ -69,6 +69,7 @@
         els.endpointInput = document.getElementById("endpoint-input");
         els.voiceSelect = document.getElementById("voice-select");
         els.voiceStyleSelect = document.getElementById("voice-style-select");
+        els.loadVoicesBtn = document.getElementById("load-voices-btn");
         els.testVoiceBtn = document.getElementById("test-voice-btn");
         els.quickButtons = document.querySelectorAll("[data-prompt]");
     }
@@ -103,6 +104,7 @@
         els.endpointInput.addEventListener("change", saveEndpoint);
         els.voiceSelect.addEventListener("change", saveVoice);
         els.voiceStyleSelect.addEventListener("change", saveVoiceStyle);
+        els.loadVoicesBtn.addEventListener("click", loadVoicesFromUserGesture);
         els.testVoiceBtn.addEventListener("click", testVoice);
 
         els.quickButtons.forEach((button) => {
@@ -581,6 +583,7 @@
             els.speechToggle.disabled = true;
             els.voiceSelect.disabled = true;
             els.voiceStyleSelect.disabled = true;
+            els.loadVoicesBtn.disabled = true;
             els.testVoiceBtn.disabled = true;
             els.speechToggle.textContent = "소리 불가";
             return;
@@ -597,6 +600,10 @@
         } else {
             window.speechSynthesis.onvoiceschanged = loadVoices;
         }
+
+        [250, 800, 1600, 3000].forEach((delay) => {
+            window.setTimeout(loadVoices, delay);
+        });
     }
 
     function renderVoiceOptions() {
@@ -614,7 +621,8 @@
         els.voiceSelect.appendChild(auto);
 
         if (!voices.length) {
-            auto.textContent = "자동 선택 - 목소리 불러오는 중";
+            auto.textContent = "목소리 없음 - 불러오기 눌러주세요";
+            setVoiceStatus("태블릿이 아직 목소리 목록을 주지 않았어요. 키티 목소리 옆의 불러오기를 눌러 주세요.", "warning");
             return;
         }
 
@@ -626,6 +634,31 @@
         });
 
         els.voiceSelect.value = voices.some((voice) => voiceId(voice) === state.voiceId) ? state.voiceId : "";
+        setVoiceStatus(`목소리 ${voices.length}개를 찾았어요. 선택 후 테스트를 눌러보세요.`);
+    }
+
+    function loadVoicesFromUserGesture() {
+        if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") return;
+
+        setVoiceStatus("태블릿 목소리 목록을 다시 불러오는 중이에요.", "warning");
+        window.speechSynthesis.cancel();
+
+        const warmup = new SpeechSynthesisUtterance(" ");
+        warmup.lang = "ko-KR";
+        warmup.volume = 0.01;
+        warmup.onend = refreshVoicesWithRetries;
+        warmup.onerror = refreshVoicesWithRetries;
+        window.speechSynthesis.speak(warmup);
+        refreshVoicesWithRetries();
+    }
+
+    function refreshVoicesWithRetries() {
+        [0, 200, 600, 1200, 2200].forEach((delay) => {
+            window.setTimeout(() => {
+                state.voices = window.speechSynthesis.getVoices();
+                renderVoiceOptions();
+            }, delay);
+        });
     }
 
     function getSelectedVoice() {
@@ -660,6 +693,9 @@
             state.speechEnabled = true;
             localStorage.setItem(STORAGE_KEYS.speech, "on");
             els.speechToggle.textContent = "소리 켜짐";
+        }
+        if (!state.voices.length) {
+            loadVoicesFromUserGesture();
         }
         speak("안녕 이수야. 키티 목소리 테스트야.");
     }

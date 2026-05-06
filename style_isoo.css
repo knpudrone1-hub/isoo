@@ -454,7 +454,7 @@ h1 {
 
 .voice-row {
     display: grid;
-    grid-template-columns: 1fr 72px;
+    grid-template-columns: 1fr 74px 64px;
     gap: 8px;
 }
 
