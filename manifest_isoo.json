@@ -1,0 +1,26 @@
+{
+  "name": "이수의 수학친구 키티",
+  "short_name": "수학친구 키티",
+  "description": "이수가 수학 문제를 힌트로 풀어가도록 돕는 GPT 챗봇",
+  "start_url": "index_isoo.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#fff6f9",
+  "theme_color": "#ff6b9c",
+  "lang": "ko-KR",
+  "icons": [
+    {
+      "src": "kitty_app_icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "kitty_app_icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
