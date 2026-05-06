@@ -331,7 +331,6 @@
         (data.output || []).forEach((item) => {
             (item.content || []).forEach((content) => {
                 if (typeof content.text === "string") parts.push(content.text);
-                if (content.type === "output_text" && typeof content.text === "string") parts.push(content.text);
             });
         });
 
